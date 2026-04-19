@@ -63,9 +63,9 @@ def ask_hannah(user_text, context=""):
                 {"role": "system", "content": HANNAH_SOUL},
                 {"role": "user",   "content": full_prompt}
             ],
-            model="llama3-70b-8192",
+            model="llama-3.3-70b-versatile",
             max_tokens=1024,
-            temperature=0.85,
+            temperature=3,
         )
         return resp.choices[0].message.content
     except Exception as e:
