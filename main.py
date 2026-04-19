@@ -9,7 +9,7 @@ from groq import Groq
 #  HARDCODED CONFIG
 # ============================================================
 GREEN_INSTANCE = "7107570157"
-GREEN_TOKEN    = "397f3b33822a4f15b5ad1749a8927ff07c1e25c9381d492889"
+GREEN_TOKEN    = "c10690c2015d46848115a8e6b53efa6c21e0b0bc7e79464a95"
 GROQ_API_KEY   = "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"
 NEWSDATA_KEY   = "pub_e5752e78c3834214a5232120ea7099d2"
 BASE_URL       = f"https://api.green-api.com/waInstance{GREEN_INSTANCE}"
