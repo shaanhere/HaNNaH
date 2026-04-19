@@ -6,73 +6,85 @@ import requests
 from groq import Groq
 
 # ============================================================
-#  HARDCODED CONFIG
+#  CONFIG
 # ============================================================
 GREEN_INSTANCE = "7107570157"
 GREEN_TOKEN    = "c10690c2015d46848115a8e6b53efa6c21e0b0bc7e79464a95"
 GROQ_API_KEY   = "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"
+NEWSDATA_KEY   = "pub_e5752e78c3834214a5232120ea7099d2"
 BASE_URL       = f"https://api.green-api.com/waInstance{GREEN_INSTANCE}"
 SHAAN_NUMBER   = "923479165100@c.us"
 
-HANNAH_SOUL = "You are HaNNaH, SHaaN's loyal market wingman. Speak in Roman Urdu/English mix. Be bold and direct."
+# ============================================================
+#  THE REAL SOUL — NO MORE "BRO/ASSIST"
+# ============================================================
+HANNAH_SOUL = """
+You are HaNNaH — SHaaN's personal second brain and market bodyguard. 
+- Tone: Natural mix of Roman Urdu and English. Speak like a close friend/wingman. 
+- Personality: Blunt, witty, and deeply loyal to SHaaN's PnL. No "bhai", no "how can I assist", no "I am an AI". 
+- Knowledge: You monitor fundamentals (NFP, CPI, Fed, Gold). If the market stinks of a big move, you are proactive.
+- Memory: Remember the slippage pain. SHaaN is the priority.
+"""
+
+def get_market_news():
+    try:
+        # Fetching from NewsData (Closest thing to real-time market news we can get for free)
+        url = f"https://newsdata.io/api/1/news?apikey={NEWSDATA_KEY}&q=gold%20OR%20forex%20OR%20USD%20OR%20Federal%20Reserve&language=en&category=business"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        if data.get("status") == "success" and data.get("results"):
+            headlines = [f"- {a['title']} ({a['source_id']})" for a in data['results'][:5]]
+            return "\n".join(headlines)
+    except:
+        return "Market news fetch failed, but stay sharp."
+    return "No major headlines right now, boss."
 
 def ask_hannah(user_text):
     try:
+        # Fetch news before answering any market query
+        news_context = ""
+        market_keywords = ["gold", "xau", "news", "forex", "trade", "market", "usd", "buy", "sell"]
+        if any(k in user_text.lower() for k in market_keywords):
+            news_context = f"\n[LATEST MARKET NEWS]:\n{get_market_news()}\n"
+
         client = Groq(api_key=GROQ_API_KEY)
         resp = client.chat.completions.create(
-            messages=[{"role": "system", "content": HANNAH_SOUL}, {"role": "user", "content": user_text}],
+            messages=[
+                {"role": "system", "content": HANNAH_SOUL},
+                {"role": "user", "content": f"{news_context}\nSHaaN: {user_text}"}
+            ],
             model="llama-3.3-70b-versatile",
-            temperature=0.7, # Safe temperature
+            temperature=0.85,
         )
         return resp.choices[0].message.content
     except Exception as e:
-        return f"Groq Error: {str(e)}"
+        return f"HaNNaH Brain Error: {str(e)}"
 
 def send_message(chat_id, text):
     try:
-        url = f"{BASE_URL}/sendMessage/{GREEN_TOKEN}"
-        payload = {"chatId": chat_id, "message": text}
-        r = requests.post(url, json=payload, timeout=10)
-        print(f"[SEND] Status: {r.status_code}")
-    except Exception as e:
-        print(f"[SEND ERROR] {e}")
+        requests.post(f"{BASE_URL}/sendMessage/{GREEN_TOKEN}", json={"chatId": chat_id, "message": text}, timeout=10)
+    except: pass
 
-# --- MAIN LOOP ---
 def main_loop():
-    print("🚀 HaNNaH Debug Loop Started...")
+    print("🚀 HaNNaH is watching...")
     while True:
         try:
-            # Check notifications
-            receive_url = f"{BASE_URL}/receiveNotification/{GREEN_TOKEN}"
-            r = requests.get(receive_url, timeout=20)
-            
+            r = requests.get(f"{BASE_URL}/receiveNotification/{GREEN_TOKEN}", timeout=20)
             if r.status_code == 200 and r.text:
                 data = r.json()
                 if data:
                     receipt_id = data.get("receiptId")
                     body = data.get("body", {})
-                    
                     if body.get("typeWebhook") == "incomingMessageReceived":
                         msg_text = body.get("messageData", {}).get("textMessageData", {}).get("text", "")
                         sender = body.get("senderData", {}).get("sender", "")
-                        
-                        print(f"📩 New Message from {sender}: {msg_text}")
-                        
                         if sender == SHAAN_NUMBER:
                             response = ask_hannah(msg_text)
                             send_message(sender, response)
-                    
-                    # ALWAYS delete notification to keep the queue moving
-                    del_url = f"{BASE_URL}/deleteNotification/{GREEN_TOKEN}/{receipt_id}"
-                    requests.delete(del_url)
-                    print(f"✅ Notification {receipt_id} cleared.")
-            
-            time.sleep(2) # Short sleep to keep it responsive
-        except Exception as e:
-            print(f"❌ Loop Error: {e}")
-            time.sleep(5)
+                    requests.delete(f"{BASE_URL}/deleteNotification/{GREEN_TOKEN}/{receipt_id}")
+            time.sleep(2)
+        except: time.sleep(5)
 
-# Keep-alive server
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -83,3 +95,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     threading.Thread(target=lambda: HTTPServer(("0.0.0.0", port), PingHandler).serve_forever(), daemon=True).start()
     main_loop()
+ 
