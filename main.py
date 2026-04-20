@@ -1,86 +1,57 @@
 import asyncio
 import os
 from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
-# Modules import kar rahe hain
+# Modules import
 from brain.neuro import NeuroCore
-from brain.emotions import Emotions
 from automation.news_analyser import NewsAnalyser
 from automation.access_chrome import ChromeAccess
-from automation.email_access import EmailAccess
-from automation.alerts_manager import AlertsManager
 
-# Load environment variables (.env file)
 load_dotenv()
 
-class HaNNaH:
+class HaNNaH_Bot:
     def __init__(self):
-        self.name = "HaNNaH"
-        self.boss = "SHaaN"
-        
-        # Initializing all components
         self.brain = NeuroCore()
-        self.emotions = Emotions()
-        self.news = NewsAnalyser()
         self.chrome = ChromeAccess()
-        self.email = EmailAccess()
-        self.alerts = AlertsManager()
+        self.news = NewsAnalyser()
+        self.token = os.getenv("TELEGRAM_TOKEN")
+        self.boss_id = os.getenv("TELEGRAM_CHAT_ID")
 
-    async def background_monitoring(self):
-        """Background mein market scan aur alerts handle karna"""
-        print(f"[{self.name}]: Monitoring started. Market pe nazar hai, Boss.")
-        while True:
-            try:
-                # High Impact News Check
-                news_update = await self.news.get_latest_sentiment()
-                if "High Impact" in news_update or "Red Folder" in news_update:
-                    await self.alerts.send_alert(f"Market Alert: {news_update}")
-                
-                # Har 10 minute baad check karega
-                await asyncio.sleep(600) 
-            except Exception as e:
-                print(f"Monitoring Error: {e}")
-                await asyncio.sleep(60)
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = str(update.effective_chat.id)
+        user_text = update.message.text
 
-    async def chat_interface(self):
-        """Live Chat Interface with Groq + Chrome Integration"""
-        print(f"\n--- {self.name} is LIVE (Powered by Llama-3.3-70b) ---")
+        # Security Check: Sirf SHaaN baat kar sake
+        if user_id != self.boss_id:
+            await update.message.reply_text("Access Denied. You are not my Boss.")
+            return
+
+        # Web Search Logic
+        search_context = ""
+        if any(word in user_text.lower() for word in ["search", "news", "check"]):
+            await update.message.reply_text("Searching the web... hold on Boss.")
+            results = await self.chrome.search_and_extract(user_text)
+            search_context = " | ".join(results)
+
+        # Brain Processing
+        response = await self.brain.process_thought(user_text, context_data=search_context)
         
-        while True:
-            user_input = input(f"\n{self.boss}: ").strip()
-            if not user_input:
-                continue
+        # Reply to Telegram
+        await update.message.reply_text(response)
 
-            # Check if user wants a web search/news
-            context = ""
-            search_keywords = ["search", "news", "check", "headlines", "latest", "btao"]
-            
-            if any(word in user_input.lower() for word in search_keywords):
-                print(f"[{self.name}]: Searching the web for you...")
-                search_results = await self.chrome.search_and_extract(user_input)
-                context = " | ".join(search_results) if search_results else "No live data found."
-
-            # Brain processes the input with context and emotions
-            self.emotions.update_mood("normal") # Dynamic mood logic yahan aayegi
-            raw_response = await self.brain.process_thought(user_input, context_data=context)
-            
-            # Formatting response with HaNNaH's style
-            final_response = self.emotions.format_response(raw_response)
-            
-            print(f"\n{self.name}: {final_response}")
-
-    async def start(self):
-        # Dono tasks ko parallel chalana
-        await asyncio.gather(
-            self.background_monitoring(),
-            self.chat_interface()
-        )
+    def run(self):
+        application = ApplicationBuilder().token(self.token).build()
+        
+        # Message handler setup
+        text_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), self.handle_message)
+        application.add_handler(text_handler)
+        
+        print("HaNNaH is active on Telegram. Go talk to her there!")
+        application.run_polling()
 
 if __name__ == "__main__":
-    bot = HaNNaH()
-    try:
-        asyncio.run(bot.start())
-    except KeyboardInterrupt:
-        print(f"\n[{bot.name}]: Allah Hafiz Boss, take care!")
-    except Exception as e:
-        print(f"System Crash: {e}")
+    bot = HaNNaH_Bot()
+    bot.run()
+ 
