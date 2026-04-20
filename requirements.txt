@@ -2,7 +2,7 @@
 asyncio
 aiohttp
 python-dotenv
-
+groq
 # AI and Natural Language
 openai
 anthropic
