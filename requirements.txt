@@ -1,4 +1,24 @@
-groq
-requests
+# Core Async and API
+asyncio
+aiohttp
 python-dotenv
+
+# AI and Natural Language
+openai
+anthropic
+langchain
+nltk
+
+# Web Automation and Scraping
+playwright
 beautifulsoup4
+selenium
+
+# Data and Finance
+pandas
+numpy
+yfinance
+
+# Security and Utils
+cryptography
+pydantic
