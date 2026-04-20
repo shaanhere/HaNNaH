@@ -22,3 +22,6 @@ yfinance
 # Security and Utils
 cryptography
 pydantic
+
+python-telegram-bot
+schedule
