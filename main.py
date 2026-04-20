@@ -3,6 +3,15 @@ import os
 from dotenv import load_dotenv
 from automation.news_analyser import NewsAnalyser
 from brain.neuro import NeuroCore
+# main.py mein ye lines add karlo:
+from automation.email_access import EmailAccess
+from automation.social_acc_manager import SocialManager
+from brain.emotions import Emotions
+
+# Aur HaNNaH class ke __init__ mein:
+self.email = EmailAccess()
+self.social = SocialManager()
+self.emotions = Emotions()
 
 load_dotenv() # Load your API keys here
 
