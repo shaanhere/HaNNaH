@@ -6,129 +6,113 @@ import requests
 from groq import Groq
 from datetime import datetime
 
-# ============================================================
-# CONFIG
-# ============================================================
+# ================= CONFIG =================
 GREEN_INSTANCE = "7107570157"
 GREEN_TOKEN    = "c10690c2015d46848115a8e6b53efa6c21e0b0bc7e79464a95"
 GROQ_API_KEY   = "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"
 FMP_API_KEY    = "ogECGJ7AGs4W78mtryA6EGPTiiwH6bok"
 BASE_URL       = f"https://api.green-api.com/waInstance{GREEN_INSTANCE}"
 
-# ============================================================
-# AI SOUL
-# ============================================================
-HANNAH_SOUL = """
-You are HaNNaH — SHaaN's market assistant.
-Speak in Roman Urdu + English. Be smart and natural.
-"""
-
-# ============================================================
-# ECONOMIC CALENDAR
-# ============================================================
+# ================= AI =================
 def get_economic_calendar():
+    print("📊 Calling FMP API...")
     try:
         today = datetime.now().strftime('%Y-%m-%d')
         url = f"https://financialmodelingprep.com/api/v3/economic_calendar?from={today}&to={today}&apikey={FMP_API_KEY}"
         r = requests.get(url, timeout=10)
+        print("📊 FMP Status:", r.status_code)
+
         data = r.json()
+        return "OK"
+    except Exception as e:
+        print("❌ FMP Error:", e)
+        return "FMP failed"
 
-        events = []
-        if isinstance(data, list):
-            for event in data[:5]:
-                impact = event.get('impact', 'Low')
-                if impact in ['High', 'Medium']:
-                    events.append(f"{event['event']} ({event['country']}) - {impact}")
-
-        return "\n".join(events) if events else "No major news."
-
-    except:
-        return "Calendar unavailable."
-
-# ============================================================
-# AI RESPONSE
-# ============================================================
 def ask_hannah(user_text):
+    print("🧠 Calling Groq API...")
     try:
-        calendar = get_economic_calendar()
-
         client = Groq(api_key=GROQ_API_KEY)
 
         resp = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": HANNAH_SOUL},
-                {"role": "user", "content": f"{calendar}\n\nUser: {user_text}"}
-            ],
+            messages=[{"role": "user", "content": user_text}],
             model="llama-3.3-70b-versatile",
-            temperature=0.7,
         )
 
+        print("🧠 Groq Success")
         return resp.choices[0].message.content
 
     except Exception as e:
-        print("AI Error:", e)
-        return "Hannah brain issue..."
+        print("❌ Groq Error:", e)
+        return "AI failed"
 
-# ============================================================
-# SEND MESSAGE
-# ============================================================
+# ================= SEND =================
 def send_message(chat_id, text):
     try:
         url = f"{BASE_URL}/sendMessage/{GREEN_TOKEN}"
 
-        # ensure proper format
         chat_id = chat_id if "@c.us" in chat_id else f"{chat_id}@c.us"
 
-        requests.post(url, json={
+        print("📤 Sending to:", chat_id)
+
+        r = requests.post(url, json={
             "chatId": chat_id,
             "message": text
         }, timeout=10)
 
-    except Exception as e:
-        print("Send Error:", e)
+        print("📤 Send status:", r.status_code)
 
-# ============================================================
-# MAIN LOOP
-# ============================================================
+    except Exception as e:
+        print("❌ Send Error:", e)
+
+# ================= LOOP =================
 def main_loop():
-    print("🚀 Hannah is LIVE...")
+    print("🚀 BOT STARTED...")
 
     while True:
         try:
             url = f"{BASE_URL}/receiveNotification/{GREEN_TOKEN}"
             r = requests.post(url, timeout=20)
 
+            print("\n====== NEW POLL ======")
+            print("STATUS:", r.status_code)
+
             if r.status_code == 200 and r.text:
                 data = r.json()
+                print("📦 FULL DATA:", data)
 
                 if data:
                     receipt_id = data.get("receiptId")
                     body = data.get("body", {})
 
-                    if body.get("typeWebhook") == "incomingMessageReceived":
+                    print("📩 BODY:", body)
 
-                        msg_data = body.get("messageData", {})
+                    msg_data = body.get("messageData", {})
 
-                        msg_text = (
-                            msg_data.get("textMessageData", {}).get("text") or
-                            msg_data.get("extendedTextMessageData", {}).get("text") or
-                            ""
-                        )
+                    msg_text = (
+                        msg_data.get("textMessageData", {}).get("text") or
+                        msg_data.get("extendedTextMessageData", {}).get("text") or
+                        msg_data.get("conversation") or
+                        ""
+                    )
 
-                        sender = body.get("senderData", {}).get("sender", "")
+                    sender = body.get("senderData", {}).get("sender", "")
 
-                        print("📩 From:", sender)
-                        print("💬 Msg:", msg_text)
+                    print("👤 Sender:", sender)
+                    print("💬 Message:", msg_text)
 
-                        if msg_text:
-                            print("⚡ Processing...")
+                    # 🔥 FORCE EXECUTION (no conditions)
+                    if msg_text:
+                        print("⚡ MESSAGE DETECTED → CALLING AI")
 
-                            reply = ask_hannah(msg_text)
+                        # test FMP
+                        get_economic_calendar()
 
-                            print("🤖 Reply:", reply)
+                        # test Groq
+                        reply = ask_hannah(msg_text)
 
-                            # reply back to same sender
-                            send_message(sender, reply)
+                        print("🤖 Reply:", reply)
+
+                        send_message(sender, reply)
 
                     if receipt_id:
                         requests.delete(f"{BASE_URL}/deleteNotification/{GREEN_TOKEN}/{receipt_id}")
@@ -136,12 +120,10 @@ def main_loop():
             time.sleep(1)
 
         except Exception as e:
-            print("Loop Error:", e)
+            print("❌ LOOP ERROR:", e)
             time.sleep(5)
 
-# ============================================================
-# KEEP ALIVE SERVER (Render Fix)
-# ============================================================
+# ================= SERVER =================
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -152,9 +134,7 @@ class PingHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
-# ============================================================
-# START
-# ============================================================
+# ================= START =================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
 
