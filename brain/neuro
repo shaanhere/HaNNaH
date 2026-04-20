@@ -1,0 +1,12 @@
+class NeuroCore:
+    def __init__(self):
+        self.backstory = "You are HaNNaH, Shaan's loyal AI bodyguard. He is a successful Forex trader."
+        self.memory = []
+
+    async def process_thought(self, text):
+        # Yahan hum LLM (like GPT-4) ko call karenge
+        # Filhal ek basic placeholder logic:
+        if "market" in text.lower():
+            return "Market ki vibe thodi choppy hai, Shaan. Main news scan kar rahi hoon, aap be-firk rahain."
+        
+        return "Ji Boss, main sun rahi hoon. Kya plan hai aaj ka?"
