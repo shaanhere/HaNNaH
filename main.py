@@ -11,8 +11,8 @@ from datetime import datetime
 # ============================================================
 GREEN_INSTANCE = "7107570157"
 GREEN_TOKEN    = "c10690c2015d46848115a8e6b53efa6c21e0b0bc7e79464a95"
-GROQ_API_KEY   = "YOUR_GROQ_API_KEY"
-FMP_API_KEY    = "YOUR_FMP_API_KEY"
+GROQ_API_KEY   = "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"
+FMP_API_KEY    = "ogECGJ7AGs4W78mtryA6EGPTiiwH6bok"
 BASE_URL       = f"https://api.green-api.com/waInstance{GREEN_INSTANCE}"
 SHAAN_NUMBER   = "923479165100"
 
