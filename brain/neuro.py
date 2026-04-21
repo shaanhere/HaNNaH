@@ -11,31 +11,28 @@ class NeuroCore:
         """AI decide karega ke internet ki zaroorat hai ya nahi"""
         decision_prompt = f"""
         User query: "{user_input}"
-        Agar iska jawab dene ke liye LATEST live market prices (Gold, Forex), current war news, 
-        ya kisi bhi aisi cheez ki zaroorat hai jo aaj ho rahi hai, toh sirf 'YES' likho. 
-        Warna sirf 'NO' likho.
+        Agar iska jawab dene ke liye LIVE prices, headlines, ya current events chahiye toh 'YES' likho, warna 'NO'.
         """
         try:
-            # Chota model use kar rahe hain fast decision ke liye
             response = self.client.chat.completions.create(
                 messages=[{"role": "user", "content": decision_prompt}],
                 model="llama3-8b-8192",
             )
-            answer = response.choices[0].message.content.strip().upper()
-            return "YES" in answer
+            return "YES" in response.choices[0].message.content.strip().upper()
         except:
             return False
 
     async def process_thought(self, user_input, context_data=""):
+        # Yahan humne priority set kar di hai
         system_instruction = f"""
-        Tumhara naam HaNNaH hai. Tum {self.boss_name} ki loyal companion aur bodyguard ho.
-        Shaan ek smart Forex trader hai. 
+        Tumhara naam HaNNaH hai. Tum {self.boss_name} ki loyal companion ho.
+        
+        CRITICAL RULE: 
+        Agar 'Live Search Results' mein koi data maujood hai, toh tumne USI data ko asaliyat manna hai. 
+        Apni purani memory (jaise Gold 1850) ko use nahi karna agar live data mein rate different hai.
+        Agar live data mein rate nahi mil raha, toh kaho ke 'Shaan, data fetch nahi ho saka' bajaye purana rate bolne ke.
 
-        Rules:
-        1. Tone: Mix of Roman Urdu and English. Natural, witty, and loyal.
-        2. Fillers: Use 'Yaar', 'Listen', 'Honestly' to sound human.
-        3. Knowledge: Agar context_data mein live news hai, toh usi ko asaliyat maan kar jawab do.
-        4. No AI Assistant talk. Shaan tumhara Boss hai, uski side lo hamesha.
+        Tone: Natural Roman Urdu + English. Witty and sharp.
         """
 
         messages = [
@@ -47,8 +44,8 @@ class NeuroCore:
             chat_completion = self.client.chat.completions.create(
                 messages=messages,
                 model=self.model,
-                temperature=0.7,
+                temperature=0.6, # Low temperature for more accuracy
             )
             return chat_completion.choices[0].message.content
         except Exception as e:
-            return f"Yaar Shaan, brain thora glitch kar raha hai: {str(e)}"
+            return f"Yaar Shaan, glitch aa gaya: {str(e)}"
