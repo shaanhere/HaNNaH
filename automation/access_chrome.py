@@ -1,33 +1,33 @@
-from playwright.async_api import async_playwright
-import os
+from curl_cffi import requests
+from bs4 import BeautifulSoup
 
 class ChromeAccess:
     def __init__(self):
-        self.search_url = "https://www.google.com/search?q="
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
 
     async def grab_news(self, query):
         try:
-            async with async_playwright() as p:
-                # Render compatibility settings
-                browser = await p.chromium.launch(
-                    headless=True,
-                    args=['--no-sandbox', '--disable-setuid-sandbox']
-                )
-                page = await browser.new_page()
+            # Google Search URL
+            url = f"https://www.google.com/search?q={query.replace(' ', '+')}+latest+news"
+            
+            # Fetching data without a real browser (Render friendly)
+            response = requests.get(url, headers=self.headers, impersonate="chrome110")
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
                 
-                # Search query with "latest news" tag
-                search_query = f"{query} latest news price"
-                await page.goto(f"{self.search_url}{search_query}", wait_until="domcontentloaded", timeout=30000)
+                # Extracting headlines (h3 tags)
+                headlines = [h.get_text() for h in soup.find_all('h3')[:5]]
                 
-                # Top headlines and snippets extract karna
-                headlines = await page.locator("h3").all_inner_texts()
-                snippets = await page.locator("div.VwiC3b").all_inner_texts() # Google snippet class
+                if not headlines:
+                    return ["Yaar, search results nahi mil sakay."]
                 
-                await browser.close()
+                return headlines
+            else:
+                return [f"Google ne mana kar diya. Status: {response.status_code}"]
                 
-                # Combine headlines and snippets for more context
-                combined_data = headlines[:5] + snippets[:3]
-                return combined_data
         except Exception as e:
-            print(f"Browser Error: {e}")
-            return ["No live data found right now."]
+            print(f"Search Error: {e}")
+            return [f"Connection error hua: {str(e)}"]
