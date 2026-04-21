@@ -1,25 +1,36 @@
 from playwright.async_api import async_playwright
+import asyncio
 
 class ChromeAccess:
     def __init__(self):
-        self.browser = None
+        self.search_url = "https://www.google.com/search?q="
 
-    async def search_and_extract(self, query):
-        """Google search karke top results aur images nikalna."""
+    async def grab_news(self, query):
         async with async_playwright() as p:
+            # Headless=True taaki Render par bina screen ke chale
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             
-            print(f"Searching for: {query}...")
-            await page.goto(f"https://www.google.com/search?q={query}")
+            # Searching for news
+            await page.goto(f"{self.search_url}{query}+forex+news", wait_until="networkidle")
             
-            # Extracting titles
-            titles = await page.locator("h3").all_inner_texts()
+            # Headlines extract karna
+            headlines = await page.locator("h3").all_inner_texts()
             
             await browser.close()
-            return titles[:5] # Top 5 results
+            # Sirf top 5 relevant headlines bhejni hain
+            return headlines[:5]
 
-    async def download_image(self, img_url, save_path):
-        """Trading charts ya news images save karne ke liye."""
-        # Image extraction logic here
-        pass
+    async def get_forex_calendar(self):
+        """Specially for Red Folder news"""
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto("https://www.forexfactory.com/calendar", wait_until="networkidle")
+            
+            # Simple logic to find high impact events
+            impacts = await page.locator(".calendar__impact").all_inner_texts()
+            events = await page.locator(".calendar__event").all_inner_texts()
+            
+            await browser.close()
+            return list(zip(impacts, events))[:10]
