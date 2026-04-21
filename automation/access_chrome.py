@@ -1,36 +1,33 @@
 from playwright.async_api import async_playwright
-import asyncio
+import os
 
 class ChromeAccess:
     def __init__(self):
         self.search_url = "https://www.google.com/search?q="
 
     async def grab_news(self, query):
-        async with async_playwright() as p:
-            # Headless=True taaki Render par bina screen ke chale
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            
-            # Searching for news
-            await page.goto(f"{self.search_url}{query}+forex+news", wait_until="networkidle")
-            
-            # Headlines extract karna
-            headlines = await page.locator("h3").all_inner_texts()
-            
-            await browser.close()
-            # Sirf top 5 relevant headlines bhejni hain
-            return headlines[:5]
-
-    async def get_forex_calendar(self):
-        """Specially for Red Folder news"""
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto("https://www.forexfactory.com/calendar", wait_until="networkidle")
-            
-            # Simple logic to find high impact events
-            impacts = await page.locator(".calendar__impact").all_inner_texts()
-            events = await page.locator(".calendar__event").all_inner_texts()
-            
-            await browser.close()
-            return list(zip(impacts, events))[:10]
+        try:
+            async with async_playwright() as p:
+                # Render compatibility settings
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=['--no-sandbox', '--disable-setuid-sandbox']
+                )
+                page = await browser.new_page()
+                
+                # Search query with "latest news" tag
+                search_query = f"{query} latest news price"
+                await page.goto(f"{self.search_url}{search_query}", wait_until="domcontentloaded", timeout=30000)
+                
+                # Top headlines and snippets extract karna
+                headlines = await page.locator("h3").all_inner_texts()
+                snippets = await page.locator("div.VwiC3b").all_inner_texts() # Google snippet class
+                
+                await browser.close()
+                
+                # Combine headlines and snippets for more context
+                combined_data = headlines[:5] + snippets[:3]
+                return combined_data
+        except Exception as e:
+            print(f"Browser Error: {e}")
+            return ["No live data found right now."]
