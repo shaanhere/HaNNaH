@@ -13,7 +13,7 @@ nltk
 playwright==1.58.0
 beautifulsoup4
 selenium
-
+curl_cffi
 # Data and Finance
 pandas
 numpy
