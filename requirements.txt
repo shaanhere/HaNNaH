@@ -10,7 +10,7 @@ langchain
 nltk
 
 # Web Automation and Scraping
-playwright install chromium
+playwright
 beautifulsoup4
 selenium
 curl_cffi
