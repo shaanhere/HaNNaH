@@ -4,6 +4,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+from telegram.request import HTTPXRequest  # Timeout handle karne ke liye
 
 from brain.neuro import NeuroCore
 from automation.access_chrome import ChromeAccess
@@ -30,39 +31,47 @@ class HaNNaHBot:
         self.token = os.getenv("TELEGRAM_TOKEN")
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user_text = update.message.text
-        if not user_text:
+        if not update.message or not update.message.text:
             return
 
+        user_text = update.message.text
         print(f"Log: Shaan says -> {user_text}")
 
-        # Step 1: Brain decides if search is needed
         needs_search = await self.brain.should_i_search(user_text)
         
         context_data = ""
         if needs_search:
             temp_msg = await update.message.reply_text("Ruko Shaan, main zara fresh data dekh loon... 🔍")
-            
             try:
-                # Step 2: Trigger Chrome Access
                 headlines = await self.chrome.grab_news(user_text)
-                print(f"Log: Data found -> {headlines}")
-                context_data = " | ".join(headlines)
+                context_data = " | ".join(headlines) if headlines else "No fresh data found."
                 await temp_msg.delete()
             except Exception as e:
                 print(f"Log: Search Error -> {e}")
                 context_data = "Web search currently unavailable."
 
-        # Step 3: Brain generates final response with live data
         response = await self.brain.process_thought(user_text, context_data=context_data)
         await update.message.reply_text(response)
 
     def run(self):
+        # Server start ho raha hai
         threading.Thread(target=run_health_server, daemon=True).start()
-        app = ApplicationBuilder().token(self.token).build()
+        
+        # FIX: Connection timeout settings barha di hain
+        t_request = HTTPXRequest(connect_timeout=30, read_timeout=30)
+        
+        app = (
+            ApplicationBuilder()
+            .token(self.token)
+            .request(t_request)  # Request config yahan add ki hai
+            .get_updates_request(t_request)
+            .build()
+        )
+
         app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.handle_message))
-        print("HaNNaH is Polling...")
-        app.run_polling()
+        
+        print("HaNNaH is Polling with extended timeouts...")
+        app.run_polling(poll_interval=1.0, timeout=30)
 
 if __name__ == "__main__":
     bot = HaNNaHBot()
