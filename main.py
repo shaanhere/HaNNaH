@@ -4,7 +4,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
-from telegram.request import HTTPXRequest  # Timeout handle karne ke liye
+from telegram.request import HTTPXRequest
 
 from brain.neuro import NeuroCore
 from automation.access_chrome import ChromeAccess
@@ -12,15 +12,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Health Check for Render
+# Health Check for Hugging Face / Render
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"HaNNaH is Online")
+        self.wfile.write(b"HaNNaH is Online and Breathing")
 
 def run_health_server():
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 7860)) # HF uses 7860
     server = HTTPServer(('0.0.0.0', port), HealthCheck)
     server.serve_forever()
 
@@ -54,24 +54,30 @@ class HaNNaHBot:
         await update.message.reply_text(response)
 
     def run(self):
-        # Server start ho raha hai
+        # Background health server
         threading.Thread(target=run_health_server, daemon=True).start()
         
-        # FIX: Connection timeout settings barha di hain
-        t_request = HTTPXRequest(connect_timeout=30, read_timeout=30)
+        # Mazboot network settings for Hugging Face
+        t_request = HTTPXRequest(
+            connect_timeout=60.0, 
+            read_timeout=60.0, 
+            write_timeout=60.0, 
+            pool_timeout=60.0
+        )
         
         app = (
             ApplicationBuilder()
             .token(self.token)
-            .request(t_request)  # Request config yahan add ki hai
-            .get_updates_request(t_request)
+            .request(t_request)
+            .get_updates_request(t_request) # Startup handshake fix
             .build()
         )
 
         app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.handle_message))
         
-        print("HaNNaH is Polling with extended timeouts...")
-        app.run_polling(poll_interval=1.0, timeout=30)
+        print("HaNNaH is Polling... Boss, signal green hai!")
+        # Long polling timeout barha di hai
+        app.run_polling(poll_interval=2.0, timeout=60, bootstrap_retries=5)
 
 if __name__ == "__main__":
     bot = HaNNaHBot()
